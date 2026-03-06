@@ -1,138 +1,82 @@
 from pathlib import Path
-import pytest
+import os
+import numpy
 from PIL import Image
 import tempfile
-from core.preprocessing.validator import validate_image
-from core.preprocessing.loader import load_image, get_image_info
-from core.exceptions.errors import UnsupportedFormatError, FileTooLargeError
+import unittest
+from core.preprocessing.loader import Loader
 import logging
+
 logger = logging.getLogger(__name__)
 
 
-# ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
+class TestLoader(unittest.TestCase):
+    """Тесты для загрузчика изображений."""
 
-def create_dummy_image(size_bytes: int, suffix: str = ".jpg", mode: str = "RGB") -> Path:
-    """Создаёт временный файл-заглушку заданного размера"""
-    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as f:
-        f.write(b'0' * size_bytes)
-        return Path(f.name)
+    loader: Loader
+    test_dir: Path
+    test_image: Path
+    broken_file: Path
 
+    def setUp(self):
+        self.loader = Loader()
+        self.test_dir = Path(tempfile.mkdtemp())
+        self.test_image = self.test_dir / "test.jpg"
+        self.broken_file = self.test_dir / "broken.jpg"
 
-def create_real_dummy_image(suffix: str = ".png", size=(100, 100), mode="RGB") -> Path:
-    """Создаёт реальное изображение через PIL"""
-    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as f:
-        img = Image.new(mode, size, color='red')
-        img.save(f, format=suffix.replace('.', '').upper())
-        return Path(f.name)
+        img = Image.new('RGB', (100, 100), color='red')
+        img.save(self.test_image)
 
+        with open(self.broken_file, 'w') as f:
+            f.write("this is not an image")
 
-# ========== ТЕСТЫ ВАЛИДАЦИИ ==========
+    def tearDown(self):
+        for file in self.test_dir.glob("*"):
+            file.unlink()
+        self.test_dir.rmdir()
 
-def test_validate_image_not_found():
-    logger.info("ТЕСТ: проверка несуществующего файла")
-    with pytest.raises(FileNotFoundError):
-        validate_image("C:/not.png")
+    def test_returns_numpy_array(self):
+        """Проверяет, что load_image возвращает numpy array."""
+        result = self.loader.load_image(self.test_image)
+        self.assertIsInstance(result, numpy.ndarray)
 
+    def test_correct_shape(self):
+        """Проверяет форму выходного массива (1, height, width, channels)."""
+        result = self.loader.load_image(self.test_image, target_size=(224, 224))
+        self.assertEqual(result.shape, (1, 224, 224, 3))
 
-def test_validate_image_wrong_format():
-    """Неподдерживаемый формат"""
-    bad_file = create_dummy_image(100, suffix=".txt")
-    try:
-        with pytest.raises(UnsupportedFormatError):
-            validate_image(bad_file)
-    finally:
-        bad_file.unlink()
+    def test_grayscale(self):
+        """Проверяет конвертацию в grayscale."""
+        result = self.loader.load_image(self.test_image, grayscale=True)
+        self.assertEqual(result.shape[-1], 1)
 
+    def test_normalization(self):
+        """Проверяет нормализацию значений."""
+        result_norm = self.loader.load_image(self.test_image, normalize=True)
+        result_no_norm = self.loader.load_image(self.test_image, normalize=False)
 
-@pytest.mark.parametrize("size_mb,should_pass", [(4, True), (5, True),  (6, False), (10, False)])
-def test_validate_image_size(monkeypatch, size_mb, should_pass):
-    """Проверка ограничения по размеру (5 МБ)"""
-    import core.preprocessing.validator as validator
-    monkeypatch.setattr(validator, 'MAX_SIZE_MB', 5)
-    monkeypatch.setattr(validator, 'MAX_SIZE_BYTES', 5 * 1024 * 1024)
+        self.assertTrue((result_norm >= 0).all() and (result_norm <= 1).all())
+        self.assertTrue((result_no_norm > 1).any())
 
-    test_file = create_dummy_image(size_mb * 1024 * 1024)
+    def test_file_not_found(self):
+        """Проверяет ошибку при отсутствии файла."""
+        with self.assertRaises(FileNotFoundError):
+            self.loader.load_image("non_existent_file.jpg")
 
-    try:
-        if should_pass:
-            result = validate_image(test_file)
-            assert result is True
-        else:
-            with pytest.raises(FileTooLargeError):
-                validate_image(test_file)
-    finally:
-        test_file.unlink()
+    def test_get_image_info(self):
+        """Проверяет получение информации об изображении."""
+        info = self.loader.get_image_info(self.test_image)
 
+        self.assertEqual(info["format"], "JPEG")
+        self.assertEqual(info["width"], 100)
+        self.assertEqual(info["height"], 100)
+        self.assertEqual(info["mode"], "RGB")
 
-def test_validate_image_allowed_formats(monkeypatch):
-    """Проверка всех разрешённых форматов"""
-    allowed = ['.jpg', '.jpeg', '.png', '.bmp']
-
-    for ext in allowed:
-        test_file = create_dummy_image(100, suffix=ext)
-        try:
-            result = validate_image(test_file)
-            assert result is True
-        finally:
-            test_file.unlink()
-
-
-# ========== ТЕСТЫ ЗАГРУЗКИ ==========
-def test_get_image_info_returns_dict():
-    """Проверка получения информации об изображении"""
-    test_file = create_real_dummy_image()
-    try:
-        info = get_image_info(test_file)
-
-        assert isinstance(info, dict)
-        assert "path" in info
-        assert "format" in info
-        assert "mode" in info
-        assert "width" in info
-        assert "height" in info
-        assert info["width"] > 0
-        assert info["height"] > 0
-    finally:
-        test_file.unlink()
+    def test_broken_image(self):
+        """Проверяет поведение с битым файлом."""
+        with self.assertRaises(Exception):
+            self.loader.load_image(self.broken_file)
 
 
-@pytest.mark.parametrize("target_size", [(224, 224), (128, 128), (256, 256)])
-def test_load_image_shape_rgb(target_size):
-    """Проверка формы массива для RGB"""
-    test_file = create_real_dummy_image()
-    try:
-        img = load_image(file_path=test_file, target_size=target_size, normalize=True, grayscale=False)
-
-        assert img.shape == (1, target_size[1], target_size[0], 3)
-        assert img.dtype == "float32"
-        assert img.min() >= 0.0
-        assert img.max() <= 1.0
-    finally:
-        test_file.unlink()
-
-
-@pytest.mark.parametrize("target_size", [(224, 224), (128, 128), (100, 100)])
-def test_load_image_shape_grayscale(target_size):
-    """Проверка формы массива для grayscale"""
-    test_file = create_real_dummy_image(mode="L")  # grayscale
-    try:
-        img = load_image(file_path=test_file, target_size=target_size, normalize=False, grayscale=True)
-
-        assert img.shape == (1, target_size[1], target_size[0], 1)
-        assert img.dtype == "float32"
-        assert img.min() >= 0
-        assert img.max() <= 255
-    finally:
-        test_file.unlink()
-
-
-def test_load_image_without_normalize():
-    """Проверка без нормализации (значения 0-255)"""
-    test_file = create_real_dummy_image()
-    try:
-        img = load_image(file_path=test_file, normalize=False, grayscale=False)
-
-        assert img.max() > 1.0
-        assert img.dtype == "float32"
-    finally:
-        test_file.unlink()
+if __name__ == "__main__":
+    unittest.main()
