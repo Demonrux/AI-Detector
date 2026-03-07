@@ -1,7 +1,8 @@
 import unittest
 import tempfile
-from core.preprocessing.validator import ImageValidator
+from core.preprocessing.validators.image_validator import ImageValidator
 from core.exceptions.errors import UnsupportedFormatError, FileTooLargeError
+from evaluation.runner import TestRunner
 import shutil
 from pathlib import Path
 
@@ -13,10 +14,11 @@ class TestImageValidator(unittest.TestCase):
         self.validator = ImageValidator()
 
     def tearDown(self):
-        shutil.rmtree(self.test_dir)  # 👈 вот так
+        shutil.rmtree(self.test_dir)
 
     def test_valid_file(self):
         """Checks the validity of a correct file"""
+
         test_file = Path(self.test_dir) / "test.jpg"
         test_file.touch()
 
@@ -27,6 +29,7 @@ class TestImageValidator(unittest.TestCase):
 
     def test_valid_file_with_different_extension(self):
         """Checking different allowed forma"""
+
         for ext in ['.jpg', '.jpeg', '.png', '.bmp']:
             test_file = Path(self.test_dir) / f"test{ext}"
             test_file.touch()
@@ -38,6 +41,7 @@ class TestImageValidator(unittest.TestCase):
 
     def test_validate_image_unsupported_format(self):
         """Checks for an error when the format is not supported."""
+
         test_file = Path(self.test_dir) / "test.gif"
         test_file.touch()
 
@@ -46,6 +50,7 @@ class TestImageValidator(unittest.TestCase):
 
     def test_unsupported_format_uppercase(self):
         """Uppercase format should also be caught"""
+
         test_file = Path(self.test_dir) / "test.GIF"
         test_file.touch()
 
@@ -54,6 +59,7 @@ class TestImageValidator(unittest.TestCase):
 
     def test_file_without_extension(self):
         """File without extension -> unsupported format"""
+
         test_file = Path(self.test_dir) / "test."
         test_file.touch()
 
@@ -62,11 +68,13 @@ class TestImageValidator(unittest.TestCase):
 
     def test_file_not_found(self):
         """Checks for an error if a file does not exist."""
+
         with self.assertRaises(FileNotFoundError):
             self.validator.validate("nonexistent.jpg")
 
     def test_file_too_large(self):
         """File is larger than the limit -> FileTooLargeErr"""
+
         test_file = Path(self.test_dir) / "large.jpg"
 
         with open(test_file, 'wb') as f:
@@ -77,6 +85,7 @@ class TestImageValidator(unittest.TestCase):
 
     def test_file_exactly_max_size(self):
         """Boundary case of size"""
+
         test_file = Path(self.test_dir) / "exact.jpg"
 
         with open(test_file, 'wb') as f:
@@ -89,4 +98,4 @@ class TestImageValidator(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    unittest.main(testRunner=TestRunner(verbosity=2))

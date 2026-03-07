@@ -1,6 +1,6 @@
 from utils.logger import setup_logger
 from pathlib import Path
-from core.preprocessing.loader import ImageLoader
+from core.preprocessing.loaders.image_loader import ImageLoader
 
 setup_logger()
 
