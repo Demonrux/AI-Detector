@@ -3,32 +3,27 @@ from PIL import Image
 from pathlib import Path
 from typing import Union, Tuple
 import logging
-from core.preprocessing.validator import Validator
+from core.preprocessing.validator import ImageValidator
 
 logger = logging.getLogger(__name__)
 
 
-class Loader:
+class ImageLoader:
     def __init__(self):
-        self.validator = Validator()
+        self.validator = ImageValidator()
 
-    def load_image(self, file_path: Union[str, Path],  target_size: Tuple[int, int] = (224, 224),
-                   normalize: bool = True,
-                   grayscale: bool = False) \
-            -> numpy.ndarray:
+    def load(self, file_path: Union[str, Path], target_size: Tuple[int, int] = (224, 224), normalize: bool = True, grayscale: bool = False) -> numpy.ndarray:
         """
-        Загружает изображение и подготавливает его для модели.
-    
+        Loads an image and prepares it for the model..
         Args:
-            file_path: Путь к изображению 
-            target_size: (width, height) — размер, который ожидает модель
-            normalize: Проводить ли нормализацию (приводить к [0, 1])
-            grayscale: Преобразовывать ли в оттенки серого
-    
+            file_path: Path to image
+            target_size: (width, height) — size the model expects
+            normalize: Whether to normalize (convert to [0, 1])
+            grayscale: Convert to grayscale or not
         Returns:
-            numpy array формы (1, height, width, channels)
+            NumPy array of shape (1, height, width, channels)
         """
-        self.validator.validate_image(file_path)
+        self.validator.validate(file_path)
 
         img = Image.open(file_path)
 
@@ -51,19 +46,19 @@ class Loader:
         return img_array
 
     @staticmethod
-    def get_image_info(file_path: Union[str, Path]) -> dict:
+    def info(file_path: Union[str, Path]) -> dict:
         """
-        Возвращает информацию об изображении без загрузки в память.
+        Returns information about the image.
         Args:
-            file_path: Путь к изображению
+            file_path: Path to image
         Returns:
-            dict: Словарь вида - "path": str(file_path),
+            dict: Dictionary of the form { "path": str(file_path),
                                 "format": img.format,
                                 "mode": img.mode,
                                 "width": img.width,
-                                "height": img.height}
+                                "height": img.height }
         """
-        Validator.validate_image(file_path)
+        ImageValidator.validate(file_path)
 
         with Image.open(file_path) as img:
             info = {
@@ -74,6 +69,6 @@ class Loader:
                 "height": img.height
             }
 
-        logger.info(f"Информация о изображении: {info}")
+        logger.info(f"Image Information: {info}")
 
         return info

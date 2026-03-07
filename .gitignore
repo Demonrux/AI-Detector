@@ -16,7 +16,7 @@ __pycache__/
 logs/
 *.log
 
-tests/img/tmp_*
+evaluation/img/tmp_*
 /tmp*
 
 core/models/*.h5

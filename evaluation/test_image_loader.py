@@ -1,25 +1,23 @@
 from pathlib import Path
-import os
 import numpy
 from PIL import Image
 import tempfile
 import unittest
-from core.preprocessing.loader import Loader
+from core.preprocessing.loader import ImageLoader
 import logging
 
 logger = logging.getLogger(__name__)
 
 
 class TestLoader(unittest.TestCase):
-    """Тесты для загрузчика изображений."""
-
-    loader: Loader
+    """Tests for the image loader."""
+    loader: ImageLoader
     test_dir: Path
     test_image: Path
     broken_file: Path
 
     def setUp(self):
-        self.loader = Loader()
+        self.loader = ImageLoader()
         self.test_dir = Path(tempfile.mkdtemp())
         self.test_image = self.test_dir / "test.jpg"
         self.broken_file = self.test_dir / "broken.jpg"
@@ -36,36 +34,36 @@ class TestLoader(unittest.TestCase):
         self.test_dir.rmdir()
 
     def test_returns_numpy_array(self):
-        """Проверяет, что load_image возвращает numpy array."""
-        result = self.loader.load_image(self.test_image)
+        """Checks that load_image returns a numpy array."""
+        result = self.loader.load(self.test_image)
         self.assertIsInstance(result, numpy.ndarray)
 
     def test_correct_shape(self):
-        """Проверяет форму выходного массива (1, height, width, channels)."""
-        result = self.loader.load_image(self.test_image, target_size=(224, 224))
+        """Checks the shape of the output array (1, height, width, channels)."""
+        result = self.loader.load(self.test_image, target_size=(224, 224))
         self.assertEqual(result.shape, (1, 224, 224, 3))
 
     def test_grayscale(self):
-        """Проверяет конвертацию в grayscale."""
-        result = self.loader.load_image(self.test_image, grayscale=True)
+        """Checks conversion to grayscale."""
+        result = self.loader.load(self.test_image, grayscale=True)
         self.assertEqual(result.shape[-1], 1)
 
     def test_normalization(self):
-        """Проверяет нормализацию значений."""
-        result_norm = self.loader.load_image(self.test_image, normalize=True)
-        result_no_norm = self.loader.load_image(self.test_image, normalize=False)
+        """Checks the normalization of values."""
+        result_norm = self.loader.load(self.test_image, normalize=True)
+        result_no_norm = self.loader.load(self.test_image, normalize=False)
 
         self.assertTrue((result_norm >= 0).all() and (result_norm <= 1).all())
         self.assertTrue((result_no_norm > 1).any())
 
     def test_file_not_found(self):
-        """Проверяет ошибку при отсутствии файла."""
+        """Checks for an error if a file does not exist."""
         with self.assertRaises(FileNotFoundError):
-            self.loader.load_image("non_existent_file.jpg")
+            self.loader.load("non_existent_file.jpg")
 
     def test_get_image_info(self):
-        """Проверяет получение информации об изображении."""
-        info = self.loader.get_image_info(self.test_image)
+        """Checks for receiving image information."""
+        info = self.loader.info(self.test_image)
 
         self.assertEqual(info["format"], "JPEG")
         self.assertEqual(info["width"], 100)
@@ -73,9 +71,9 @@ class TestLoader(unittest.TestCase):
         self.assertEqual(info["mode"], "RGB")
 
     def test_broken_image(self):
-        """Проверяет поведение с битым файлом."""
+        """Checks behavior with a broken file."""
         with self.assertRaises(Exception):
-            self.loader.load_image(self.broken_file)
+            self.loader.load(self.broken_file)
 
 
 if __name__ == "__main__":

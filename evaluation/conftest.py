@@ -1,6 +1,5 @@
 import pytest
 from pathlib import Path
-from _pytest.reports import TestReport
 from datetime import datetime
 
 
@@ -20,11 +19,11 @@ def pytest_runtest_makereport(item, call):
 
 
 def pytest_sessionstart(session) -> None:
-    """Вызывается перед началом тестовой сессии"""
+    """Called before the start of a test session"""
     log_file = Path(__file__).parent.parent / "logs" / "test.log"
     log_file.parent.mkdir(exist_ok=True)
 
     with open(log_file, 'a', encoding='utf-8') as f:
         f.write(f"\n{'=' * 60}\n")
-        f.write(f"ЗАПУСК ТЕСТОВ: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write(f"Run tests: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write(f"{'=' * 60}\n\n")

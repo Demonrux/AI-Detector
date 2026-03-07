@@ -20,5 +20,3 @@ def setup_logger() -> None:
             logging.StreamHandler()
         ]
     )
-
-    print(f"Лог-файл будет здесь: {log_file.absolute()}")

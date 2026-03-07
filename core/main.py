@@ -1,29 +1,22 @@
 from utils.logger import setup_logger
-import unittest
-import sys
 from pathlib import Path
-from core.preprocessing.loader import Loader, Validator
+from core.preprocessing.loader import ImageLoader
 
 setup_logger()
 
 
 def main():
-    test_image = Path("C:\\Users\\DMITRY\\PycharmProjects\\AI_detector_core\\tests\\img\\img1.png")
+    test_image = Path("C:\\Users\DMITRY\\PycharmProjects\\AI_detector_core\\evaluation\\img\\img1.png")
 
-    loader = Loader()
+    loader = ImageLoader()
 
     print("\n--- Информация о файле ---")
-    info = loader.get_image_info(test_image)
+    info = loader.info(test_image)
 
     for key, value in info.items():
         print(f"{key}: {value}")
 
-    img_array = loader.load_image(
-        file_path=test_image,
-        target_size=(224, 224),
-        normalize=True,
-        grayscale=False
-    )
+    img_array = loader.load(file_path=test_image, target_size=(224, 224), normalize=True, grayscale=False)
 
     print(img_array)
 
