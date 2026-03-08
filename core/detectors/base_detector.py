@@ -11,18 +11,27 @@ logger = logging.getLogger(__name__)
 class BaseDetector(ABC):
     """
     An abstract base class for all detectors (images, text, video, etc.).
-    Defines a common interface for data loading, training, and prediction."""
+    Defines a common interface for data loading, training, and prediction.
+    """
 
     def __init__(self, model_path: Optional[Union[str, Path]] = None):
         """
         Args:
             model_path: Path to the model file (if None, the default path will be used)
         """
+        self._model = None
 
-        self.model_path = Path(model_path) if model_path else self._get_default_model_path()
-        self.model = None
-        self.load_model()
-        logger.info(f"Detector {self.__class__.__name__} initialized")
+        if model_path is None:
+            model_path = self._get_default_model_path()
+            logger.warning(f"No model path provided, using default: {model_path}")
+        else:
+            model_path = Path(model_path)
+            logger.info(f"Model path set to: {model_path}")
+
+        self.model_path = model_path
+        self.load_model(self.model_path)
+
+        logger.info(f"Detector initialized with model: {self.model_path}")
 
     @abstractmethod
     def _get_default_model_path(self) -> Path:
@@ -30,31 +39,36 @@ class BaseDetector(ABC):
         Returns the path to the default model for this detector.
         Must be implemented in a child class.
         """
+
         pass
 
     @abstractmethod
-    def load_model(self):
+    def load_model(self, model_path: Union[str, Path], force: bool = False):
         """
         Loads a model from self.model_path.
-        Must be implemented in a child class, taking into account the specific framework.
+          Args:
+            model_path: Path to model file
+            force: If True, reload even if same model is already loaded.
         """
+
         pass
 
     @abstractmethod
-    def load_dataset(self, base_dir: Path) -> tuple:
+    def _load_dataset(self, base_dir: Path) -> tuple:
         """
         Loads data from the structure:
             base_dir/
-                train/
-                    ai/
-                    nature/
-                val/
-                    ai/
-                    nature/
+              train/
+                ai/
+                nature/
+              val/
+                ai/
+                nature/
 
         Returns:
             tuple: (X_train, y_train, X_val, y_val)
         """
+
         pass
 
     @abstractmethod

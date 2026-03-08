@@ -48,3 +48,9 @@ class BaseExtractor(ABC):
             features.append(self.extract(path))
         return np.array(features)
 
+    def get_feature_dim(self) -> int:
+        """
+        Return the dimensionality of the feature vector.
+        Should be overridden by subclasses if they want to report feature dimension.
+        """
+        raise NotImplementedError("Subclasses should implement this method")

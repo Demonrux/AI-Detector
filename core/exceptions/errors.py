@@ -13,6 +13,11 @@ class FileTooLargeError(ValidationError):
     pass
 
 
+class CorruptedImageError(Exception):
+    """Выбрасывается, когда файл изображения повреждён."""
+    pass
+
+
 class ModelLoadError(Exception):
     """Ошибка загрузки модели."""
     pass
