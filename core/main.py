@@ -2,13 +2,14 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from core.detectors.image_detector import ImageDetector
-from utils.logger import setup_logger
 
 project_root = str(Path(__file__).parent.parent)
 
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
+
+from core.detectors.image_detector import ImageDetector
+from utils.logger import setup_logger
 
 setup_logger()
 
@@ -42,14 +43,10 @@ def main():
 
 
 def model() -> None:
-    image_path = "C:\\Users\\DMITRY\\PycharmProjects\\AI_detector_core\\evaluation\\img\\ai\\84_midjourney_46.png"
-
     detector = ImageDetector()
-    predict = detector.predict(image_path, verbose=True)
-
-    print(predict["class"])
+    detector.train()
 
 
 if __name__ == "__main__":
-    # main()
-    model()
+    main()
+    # model()
