@@ -1,6 +1,7 @@
 from core.detectors.base_detector import BaseDetector
 from typing import Union, Dict, Any, Optional
 from pathlib import Path
+from datetime import datetime
 import numpy
 from core.preprocessing.loaders.image_loader import ImageLoader
 from sklearn.ensemble import RandomForestClassifier
@@ -48,6 +49,7 @@ class ImageDetector(BaseDetector):
         Returns:
             Loaded model
         """
+        model_path = Path(model_path)
 
         if (self._model is not None) and (self.model_path == model_path) and not force:
             logging.warning(f"Model {self.model_path} already loaded, skipping")
@@ -77,6 +79,7 @@ class ImageDetector(BaseDetector):
         Returns:
             (X_train, y_train, X_val, y_val)
         """
+        base_dir = Path(base_dir)
 
         logging.info("=" * 60)
         logging.info(f"LOAD IMAGE DATASET - {base_dir}")
@@ -91,10 +94,11 @@ class ImageDetector(BaseDetector):
         logging.info(f"Train Nature: {len(train_nature)} files")
         logging.info(f"Val AI: {len(val_ai)} files")
         logging.info(f"Val Nature: {len(val_nature)} files")
-        x_train_ai = self._extract_with_progress(self.extractor, train_ai, "Extract train_ai")
-        x_train_nature = self._extract_with_progress(self.extractor, train_nature, "Extract train_nature")
-        x_val_ai = self._extract_with_progress(self.extractor, val_ai, "Extract val_ai")
-        x_val_nature = self._extract_with_progress(self.extractor, val_nature, "Extract val_nature")
+
+        x_train_ai = self._extract_with_progress(self.extractor, train_ai, "Extract train_ai", loader=self.loader)
+        x_train_nature = self._extract_with_progress(self.extractor, train_nature, "Extract train_nature", loader=self.loader)
+        x_val_ai = self._extract_with_progress(self.extractor, val_ai, "Extract val_ai", loader=self.loader)
+        x_val_nature = self._extract_with_progress(self.extractor, val_nature, "Extract val_nature", loader=self.loader)
 
         x_train = numpy.vstack([x_train_ai, x_train_nature])
         y_train = [0] * len(train_ai) + [1] * len(train_nature)
@@ -114,6 +118,8 @@ class ImageDetector(BaseDetector):
 
     def train(self,
               dataset_path: Optional[Union[str, Path]] = None,
+              save_path: Optional[Union[str, Path]] = None,
+              auto_save: bool = True,
               n_estimators: int = 200,
               max_depth: int = 20,
               random_state: int = 42,
@@ -124,6 +130,8 @@ class ImageDetector(BaseDetector):
 
         Args:
             dataset_path: path to the folder with train/val
+            auto_save: if True, automatically save the model after training
+            save_path: custom path for saving (if None, generates timestamped name)
             n_estimators: number of trees in the forest
             max_depth: maximum depth of the tree
             random_state: random seed for reproducibility
@@ -164,6 +172,17 @@ class ImageDetector(BaseDetector):
         print(cm)
 
         print(f"Class model: {model.classes_}")
+
+        if auto_save:
+            if save_path:
+                save_file = Path(save_path)
+            else:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                acc_str = f"{accuracy:.4f}".replace(".", "_")
+                save_file = self.model_path.parent / f"model_{timestamp}_acc{acc_str}.pkl"
+
+            self.save_model(save_file)
+            logging.info(f"Model automatically saved to: {save_file}")
 
         return model
 
