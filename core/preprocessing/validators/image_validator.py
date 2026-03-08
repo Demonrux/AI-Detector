@@ -34,7 +34,7 @@ class ImageValidator(BaseValidator):
             FileTooLargeError
         """
         path = Path(file_path)
-        logger.info(f"Validate file {path}")
+        logger.info(f"Validate image {path}")
 
         self._check_exists(path)
         self._check_extension(path)

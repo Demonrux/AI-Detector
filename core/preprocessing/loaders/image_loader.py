@@ -15,7 +15,12 @@ class ImageLoader(BaseLoader):
         super().__init__(validator)
 
     def info(self, file_path: Union[str, Path]) -> dict:
-        """Get information about an image"""
+        """
+        Get information about an image
+
+        Returns: dictionary with image metadata (path, format, mode, width, height)
+        """
+
         self._validate(file_path)
 
         with Image.open(file_path) as img:
