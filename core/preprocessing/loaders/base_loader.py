@@ -14,21 +14,20 @@ class BaseLoader(ABC):
     def __init__(self, validator: Optional[BaseValidator] = None):
         """
         Args:
-            validator: validator for this file type (can be None
+            validator: validator for this file type
         """
         self.validator = validator
 
     @abstractmethod
-    def load(self, file_path: Union[str, Path], **kwargs) -> Any:
+    def load(self, file_path: Union[str, Path]) -> Any:
         """
         Load data from file.
 
         Args:
             file_path: file path
-            **kwargs: bootloader-specific parameters
 
         Returns:
-            Downloaded data in model-ready forma
+            File in a format suitable for processing
         """
         pass
 
@@ -49,4 +48,3 @@ class BaseLoader(ABC):
         """
         if self.validator:
             self.validator.validate(file_path)
-

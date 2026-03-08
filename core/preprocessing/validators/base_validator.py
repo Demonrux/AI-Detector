@@ -46,15 +46,11 @@ class BaseValidator(ABC):
         max_bytes = self.get_max_size_bytes()
 
         if file_size > max_bytes:
-            raise FileTooLargeError(
-                f"File size exceeded: {file_size} byte. "
-                f"Max: {max_bytes // (1024*1024)} MB"
-            )
+            raise FileTooLargeError(f"File size exceeded: {file_size} byte. " f"Max: {max_bytes // (1024*1024)} MB")
 
     def _check_extension(self, file_path: Path) -> None:
         """Extension check"""
         ext = file_path.suffix.lower()
         if ext not in self.get_allowed_extensions():
-            raise UnsupportedFormatError(
-                    f"Format '{ext}' not supported. "
-                    f"Allowed: {', '.join(self.get_allowed_extensions())}")
+            raise UnsupportedFormatError(f"Format '{ext}' not supported."
+                                         f""f"Allowed: {','.join(self.get_allowed_extensions())}")
