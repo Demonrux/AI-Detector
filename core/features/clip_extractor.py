@@ -35,14 +35,14 @@ class CLIPExtractor(BaseExtractor):
         Returns:
             numpy array of shape (feature_dim, features)
         """
-        image = self.preprocess(Image.open(file_path)).unsqueeze(0).to(self.device)
+
+        with Image.open(file_path) as img:
+            image = self.preprocess(img).unsqueeze(0).to(self.device)
 
         with torch.no_grad():
             features = self.model.encode_image(image)
 
-        features_np = features.cpu().numpy().flatten()
-
-        return features_np.astype(np.float32)
+        return features.cpu().numpy().flatten().astype(np.float32)
 
     def get_feature_names(self) -> list:
         return self.feature_list

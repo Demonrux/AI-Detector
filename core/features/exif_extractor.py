@@ -92,43 +92,44 @@ class EXIFExtractor(BaseExtractor):
 
     def extract(self, file_path: Union[str, Path]) -> np.ndarray:
         """Extract features from EXIF metadata."""
-        named = self._get_exif_dict(file_path)
-        img = Image.open(file_path)
 
-        features = []
+        with Image.open(file_path) as img:
+            named = self._get_exif_dict(file_path)
 
-        features.append(1 if named else 0)
-        features.append(1 if 'Make' in named else 0)
-        features.append(1 if 'Model' in named else 0)
-        features.append(1 if 'DateTime' in named else 0)
-        features.append(1 if any(gps in named for gps in self.GPS_TAGS) else 0)
-        features.append(1 if 'Software' in named else 0)
-        features.append(1 if 'Copyright' in named else 0)
-        features.append(1 if 'ImageDescription' in named else 0)
+            features = []
 
-        features.append(len(named))
+            features.append(1 if named else 0)
+            features.append(1 if 'Make' in named else 0)
+            features.append(1 if 'Model' in named else 0)
+            features.append(1 if 'DateTime' in named else 0)
+            features.append(1 if any(gps in named for gps in self.GPS_TAGS) else 0)
+            features.append(1 if 'Software' in named else 0)
+            features.append(1 if 'Copyright' in named else 0)
+            features.append(1 if 'ImageDescription' in named else 0)
 
-        software = str(named.get('Software', '')).lower()
-        features.append(1 if any(ai in software for ai in ['midjourney', 'dall-e', 'stable', 'diffusion', 'ai']) else 0)
-        features.append(1 if any(ed in software for ed in ['photoshop', 'lightroom', 'elements', 'gimp', 'editor']) else 0)
+            features.append(len(named))
 
-        date_str = named.get('DateTime', '')
-        try:
-            datetime.strptime(date_str, '%Y:%m:%d %H:%M:%S')
-            features.append(1)
-        except:
-            features.append(0)
+            software = str(named.get('Software', '')).lower()
+            features.append(1 if any(ai in software for ai in ['midjourney', 'dall-e', 'stable', 'diffusion', 'ai']) else 0)
+            features.append(1 if any(ed in software for ed in ['photoshop', 'lightroom', 'elements', 'gimp', 'editor']) else 0)
 
-        features.append(img.width)
-        features.append(img.height)
+            date_str = named.get('DateTime', '')
+            try:
+                datetime.strptime(date_str, '%Y:%m:%d %H:%M:%S')
+                features.append(1)
+            except:
+                features.append(0)
 
-        features.append(self._count_category_matches(named, self.CAMERA_TAGS))
-        features.append(self._count_category_matches(named, self.SOFTWARE_TAGS))
-        features.append(self._count_category_matches(named, self.DESCRIPTION_TAGS))
-        features.append(self._count_category_matches(named, self.DATETIME_TAGS))
-        features.append(self._count_category_matches(named, self.GPS_TAGS))
+            features.append(img.width)
+            features.append(img.height)
 
-        return np.array(features, dtype=np.float32)
+            features.append(self._count_category_matches(named, self.CAMERA_TAGS))
+            features.append(self._count_category_matches(named, self.SOFTWARE_TAGS))
+            features.append(self._count_category_matches(named, self.DESCRIPTION_TAGS))
+            features.append(self._count_category_matches(named, self.DATETIME_TAGS))
+            features.append(self._count_category_matches(named, self.GPS_TAGS))
+
+            return np.array(features, dtype=np.float32)
 
     def get_feature_names(self) -> list:
         return self.feature_list
