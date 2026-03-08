@@ -29,9 +29,10 @@ class ImageValidator(BaseValidator):
 
         try:
             with Image.open(path) as img:
-                img.verify()
-        except Exception as error:
-            raise CorruptedImageError(f"Image file is corrupted: {path} — {error}")
+                _ = img.format
+                _ = img.size
+        except Exception as e:
+            raise CorruptedImageError(f"Image file is corrupted: {path} — {e}")
 
     def validate(self, file_path: Union[str, Path]) -> bool:
         """
@@ -48,7 +49,6 @@ class ImageValidator(BaseValidator):
             FileTooLargeError
         """
         path = Path(file_path)
-        logger.info(f"Validate image {path}")
 
         self._check_exists(path)
         self._check_extension(path)

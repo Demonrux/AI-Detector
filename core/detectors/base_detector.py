@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
+from PIL import Image
 from typing import Union, Dict, Any, Optional
 import logging
 import numpy
@@ -97,17 +98,60 @@ class BaseDetector(ABC):
         pass
 
     @staticmethod
-    def _extract_with_progress(extractor, files, desc) -> numpy.ndarray:
+    def _extract_with_progress(extractor, files, desc, loader=None, **kwargs) -> numpy.ndarray:
         """
         Extracts features from a list of files with a progress bar.
+
+        Args:
+            extractor: Feature extractor
+            files: List of file paths
+            desc: Description for progress bar
+            loader: Loader that converts file paths to data objects
+            **kwargs: Additional keyword arguments to pass to extractor
+
+        Returns:
+            numpy.ndarray: Array of features
         """
+
         logger.info(f"Start extraction: {desc} ({len(files)} files)")
         features = []
-        for f in tqdm(files, desc=desc):
-            features.append(extractor.extract(f))
+        skipped = 0
+        feature_dim = None
+
+        for file in tqdm(files, desc=desc):
+            try:
+                data = loader.load(file)
+
+                if isinstance(data, Image.Image):
+                    feat = extractor.extract(image=data, **kwargs)
+                elif isinstance(data, str):
+                    feat = extractor.extract(text=data, **kwargs)
+                # Add other data types as needed
+
+                else:
+                    feat = extractor.extract(data=data, **kwargs)
+
+                if feature_dim is None:
+                    feature_dim = len(feat)
+                    logger.info(f"Feature dimension detected: {feature_dim}")
+
+                if len(feat) != feature_dim:
+                    raise ValueError(f"Feature dimension mismatch: expected {feature_dim}, got {len(feat)}")
+
+                features.append(feat)
+
+            except Exception as error:
+                logger.warning(f"Skipping file {file}: {error}")
+                skipped += 1
+                if feature_dim is None:
+                    continue
+                features.append(numpy.zeros(feature_dim))
+
+        if not features:
+            raise RuntimeError(f"No features could be extracted for {desc}")
 
         result = numpy.array(features)
-        logger.info(f"Completed: {desc}, feature shape: {result.shape}")
+        logger.info(f"Completed: {desc}, feature shape: {result.shape}, skipped: {skipped}")
         return result
 
     def __repr__(self) -> str:

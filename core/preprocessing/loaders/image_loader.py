@@ -51,7 +51,4 @@ class ImageLoader(BaseLoader):
 
         self._validate(file_path)
 
-        image = Image.open(file_path)
-        logger.info(f"Image loaded: {file_path}")
-
-        return image
+        return Image.open(file_path)
