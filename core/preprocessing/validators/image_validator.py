@@ -17,7 +17,7 @@ class ImageValidator(BaseValidator):
 
     def get_max_size_bytes(self) -> int:
         """Return maximum allowed file size in bytes"""
-        return self.MAX_SIZE_MB * 1024 * 1024
+        return self.MAX_SIZE_BYTES
 
     def validate(self, file_path: Union[str, Path]) -> bool:
         """
