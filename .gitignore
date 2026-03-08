@@ -29,6 +29,15 @@ build/
 *.msi
 *.dmg
 
+*.png
+*.jpg
+*.jpeg
+*.bmp
+*.gif
+
+evaluation/img/
+datasets/
+data/
 installer/
 *.exe.manifest
 
