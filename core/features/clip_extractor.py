@@ -1,7 +1,6 @@
 import torch
 import clip
-from pathlib import Path
-from typing import Union
+from PIL import Image
 import numpy as np
 from typing import Optional
 from .base_extractor import BaseExtractor
@@ -20,6 +19,7 @@ class CLIPExtractor(BaseExtractor):
             device: 'cuda', 'cpu', or None for auto-detection
             loader: data loader for this type (if not passed, a new one is created)
         """
+
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -31,22 +31,27 @@ class CLIPExtractor(BaseExtractor):
 
         self.feature_list = [f'clip_{i}' for i in range(self.feature_dim)]
 
-    def extract(self, file_path: Union[str, Path]) -> np.ndarray:
+    def extract(self, image: Image.Image = None, **kwargs) -> np.ndarray:
         """
         Extract CLIP features from image.
+
+        Args:
+            image: PIL Image object (preloaded)
+            **kwargs: Additional arguments (for compatibility)
 
         Returns:
             numpy array of shape (feature_dim, features)
         """
 
-        img = self.loader.load(file_path)
+        if image is None:
+            raise ValueError("CLIPExtractor requires 'image' keyword argument")
 
-        image = self.preprocess(img).unsqueeze(0).to(self.device)
+        image_tensor = self.preprocess(image).unsqueeze(0).to(self.device)
 
         with torch.no_grad():
-            features = self.model.encode_image(image)
+            features = self.model.encode_image(image_tensor)
 
         return features.cpu().numpy().flatten().astype(np.float32)
 
     def get_feature_dim(self) -> int:
-        return 512
+        return self.feature_dim

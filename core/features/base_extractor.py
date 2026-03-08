@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Union
+from PIL import Image
 import numpy as np
 
 
@@ -13,39 +14,46 @@ class BaseExtractor(ABC):
     """
 
     @abstractmethod
-    def extract(self, file_path: Union[str, Path]) -> np.ndarray:
+    def extract(self, **kwargs) -> np.ndarray:
         """
-        Extract features from a file.
+        Extract features from preloaded data.
 
         Args:
-            file_path: Path to the file
+            **kwargs: Keyword arguments containing the preloaded data.
+                Common patterns:
+                    - For images: extract(image=pillow_image)
+                    - For text: extract(text=string_content)
+                    - For audio: extract(audio=audio_array)
+                    - For video: extract(frames=video_frames)
 
         Returns:
-            NumPy array of extracted features (1D or 2D)
+            NumPy array of extracted features
 
         Raises:
-            FileNotFoundError: if file doesn't exist
-            ValueError: if file can't be processed
+            ValueError: if required keyword arguments are missing or invalid
         """
         pass
 
-    def __call__(self, file_path: Union[str, Path]) -> np.ndarray:
+    def __call__(self, **kwargs) -> np.ndarray:
         """Make extractor callable for convenience."""
-        return self.extract(file_path)
+        return self.extract(**kwargs)
 
-    def extract_batch(self, file_paths: list) -> np.ndarray:
+    def extract_batch(self, data_list: list, **kwargs) -> np.ndarray:
         """
-        Extract features from multiple files.
+        Extract features from multiple inputs.
 
         Args:
-            file_paths: List of paths to files
+            data_list: List of preloaded data objects
+            **kwargs: Additional keyword arguments passed to extract()
 
         Returns:
-            2D NumPy array of shape (n_files, n_features)
+            2D NumPy array of shape (n_samples, n_features)
         """
         features = []
-        for path in file_paths:
-            features.append(self.extract(path))
+        for data in data_list:
+
+            feat = self.extract(data=data, **kwargs)
+            features.append(feat)
         return np.array(features)
 
     def get_feature_dim(self) -> int:

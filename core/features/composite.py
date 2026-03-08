@@ -1,6 +1,6 @@
 import numpy as np
-from pathlib import Path
-from typing import Union, List
+from PIL import Image
+from typing import List, Any
 from core.features.base_extractor import BaseExtractor
 
 
@@ -13,7 +13,7 @@ class CompositeExtractor(BaseExtractor):
             EXIFExtractor(),
             CLIPExtractor()
         ])
-        features = composite.extract("photo.jpg")  # all features concatenated
+        features = composite.extract(image=loaded_image)  # all features concatenated
     """
 
     def __init__(self, extractors: List[BaseExtractor]):
@@ -21,7 +21,6 @@ class CompositeExtractor(BaseExtractor):
         Args:
             extractors: List of feature extractors to combine
         """
-
         self.extractors = extractors
         self._feature_names = self._combine_feature_names()
         self._feature_dims = self._combine_feature_dims()
@@ -38,23 +37,24 @@ class CompositeExtractor(BaseExtractor):
         return all_names
 
     def _combine_feature_dims(self) -> int:
-        """
-        Total feature dimension.
-        """
-
+        """Total feature dimension."""
         return sum(ex.get_feature_dim() for ex in self.extractors)
 
-    def extract(self, file_path: Union[str, Path]) -> np.ndarray:
+    def extract(self, **kwargs) -> np.ndarray:
         """
         Extract features from all extractors and concatenate.
+
+        Args:
+            **kwargs: Keyword arguments to pass to each extractor.
+                     All extractors in the composite should accept the same
+                     named arguments (e.g., image=image_object).
 
         Returns:
             Combined numpy array of all features
         """
-
         all_features = []
         for extractor in self.extractors:
-            features = extractor.extract(file_path)
+            features = extractor.extract(**kwargs)
             all_features.append(features)
         return np.concatenate(all_features)
 
@@ -63,13 +63,3 @@ class CompositeExtractor(BaseExtractor):
 
     def get_feature_dim(self) -> int:
         return self._feature_dims
-
-    def get_exif(self, file_path: Union[str, Path]) -> dict:
-        """
-        Get EXIF from first extractor that supports it.
-        """
-
-        for ex in self.extractors:
-            if hasattr(ex, 'get_exif'):
-                return ex.get_exif(file_path)
-        return {}
