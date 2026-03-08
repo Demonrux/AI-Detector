@@ -110,14 +110,16 @@ class EXIFExtractor(BaseExtractor):
             features.append(len(named))
 
             software = str(named.get('Software', '')).lower()
-            features.append(1 if any(ai in software for ai in ['midjourney', 'dall-e', 'stable', 'diffusion', 'ai']) else 0)
-            features.append(1 if any(ed in software for ed in ['photoshop', 'lightroom', 'elements', 'gimp', 'editor']) else 0)
+            features.append(1 if any(ai in software for ai in ['midjourney', 'dall-e', 'stable', 'diffusion', 'ai'])
+                            else 0)
+            features.append(1 if any(ed in software for ed in ['photoshop', 'lightroom', 'elements', 'gimp', 'editor'])
+                            else 0)
 
             date_str = named.get('DateTime', '')
             try:
                 datetime.strptime(date_str, '%Y:%m:%d %H:%M:%S')
                 features.append(1)
-            except:
+            except ValueError:
                 features.append(0)
 
             features.append(img.width)

@@ -1,26 +1,29 @@
 import torch
 import clip
-from PIL import Image
 from pathlib import Path
 from typing import Union
 import numpy as np
+from typing import Optional
 from .base_extractor import BaseExtractor
+from core.preprocessing.loaders.image_loader import ImageLoader
 
 
 class CLIPExtractor(BaseExtractor):
     """Extract visual features using OpenAI's CLIP model."""
 
-    def __init__(self, model_name: str = "ViT-B/32", device: str = None):
+    def __init__(self, model_name: str = "ViT-B/32", device: str = None, loader: Optional[ImageLoader] = None):
         """
         Initialize CLIP extractor.
 
         Args:
             model_name: CLIP model variant (ViT-B/32, ViT-B/16, ViT-L/14, etc.)
             device: 'cuda', 'cpu', or None for auto-detection
+            loader: data loader for this type (if not passed, a new one is created)
         """
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
 
+        self.loader = loader or ImageLoader()
         self.device = device
         self.model, self.preprocess = clip.load(model_name, device=device)
 
@@ -36,16 +39,14 @@ class CLIPExtractor(BaseExtractor):
             numpy array of shape (feature_dim, features)
         """
 
-        with Image.open(file_path) as img:
-            image = self.preprocess(img).unsqueeze(0).to(self.device)
+        img = self.loader.load(file_path)
+
+        image = self.preprocess(img).unsqueeze(0).to(self.device)
 
         with torch.no_grad():
             features = self.model.encode_image(image)
 
         return features.cpu().numpy().flatten().astype(np.float32)
 
-    def get_feature_names(self) -> list:
-        return self.feature_list
-
     def get_feature_dim(self) -> int:
-        return self.feature_dim
+        return 512
