@@ -1,3 +1,8 @@
 numpy
 PIL
 pytest
+clip
+torch
+tqdm
+scikit-learn
+joblib
