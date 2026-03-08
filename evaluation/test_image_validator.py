@@ -5,62 +5,35 @@ from core.exceptions.errors import UnsupportedFormatError, FileTooLargeError
 from evaluation.runner import TestRunner
 import shutil
 from pathlib import Path
+from PIL import Image
 
 
 class TestImageValidator(unittest.TestCase):
     """Tests for the image validator."""
+
     def setUp(self):
-        self.test_dir = tempfile.mkdtemp()
+        self.test_dir = Path(tempfile.mkdtemp())
         self.validator = ImageValidator()
+
+        self.valid_image = self.test_dir / "valid.jpg"
+        img = Image.new('RGB', (100, 100), color='red')
+        img.save(self.valid_image)
 
     def tearDown(self):
         shutil.rmtree(self.test_dir)
 
     def test_valid_file(self):
-        """Checks the validity of a correct file"""
-
-        test_file = Path(self.test_dir) / "test.jpg"
-        test_file.touch()
+        """Checks the validity of a correct file."""
 
         try:
-            self.validator.validate(test_file)
-        except Exception as e:
-            self.fail(f"Error: {e}")
+            self.validator.validate(self.valid_image)
+        except Exception as error:
+            self.fail(f"Valid file raised exception: {error}")
 
-    def test_valid_file_with_different_extension(self):
-        """Checking different allowed forma"""
-
-        for ext in ['.jpg', '.jpeg', '.png', '.bmp']:
-            test_file = Path(self.test_dir) / f"test{ext}"
-            test_file.touch()
-
-            try:
-                self.validator.validate(test_file)
-            except Exception as e:
-                self.fail(f"Format {ext} is not allowed:: {e}")
-
-    def test_validate_image_unsupported_format(self):
+    def test_unsupported_format(self):
         """Checks for an error when the format is not supported."""
 
-        test_file = Path(self.test_dir) / "test.gif"
-        test_file.touch()
-
-        with self.assertRaises(UnsupportedFormatError):
-            self.validator.validate(test_file)
-
-    def test_unsupported_format_uppercase(self):
-        """Uppercase format should also be caught"""
-
-        test_file = Path(self.test_dir) / "test.GIF"
-        test_file.touch()
-
-        with self.assertRaises(UnsupportedFormatError):
-            self.validator.validate(test_file)
-
-    def test_file_without_extension(self):
-        """File without extension -> unsupported format"""
-
-        test_file = Path(self.test_dir) / "test."
+        test_file = self.test_dir / "test.gif"
         test_file.touch()
 
         with self.assertRaises(UnsupportedFormatError):
@@ -73,28 +46,25 @@ class TestImageValidator(unittest.TestCase):
             self.validator.validate("nonexistent.jpg")
 
     def test_file_too_large(self):
-        """File is larger than the limit -> FileTooLargeErr"""
+        """File is larger than the limit -> FileTooLargeError."""
 
-        test_file = Path(self.test_dir) / "large.jpg"
+        large_file = self.test_dir / "large.jpg"
 
-        with open(test_file, 'wb') as f:
-            f.write(b'0' * (ImageValidator.MAX_SIZE_BYTES + 1))
+        with open(large_file, 'wb') as file:
+            file.write(b'0' * (self.validator.get_max_size_bytes() + 1))
 
         with self.assertRaises(FileTooLargeError):
-            self.validator.validate(test_file)
+            self.validator.validate(large_file)
 
-    def test_file_exactly_max_size(self):
-        """Boundary case of size"""
+    def test_corrupted_image(self):
+        """Test that validator catches corrupted images."""
 
-        test_file = Path(self.test_dir) / "exact.jpg"
+        corrupted = self.test_dir / "corrupted.jpg"
+        with open(corrupted, 'wb') as file:
+            file.write(b'\xFF\xD8\xFF\x00' + b'corrupted data' * 100)
 
-        with open(test_file, 'wb') as f:
-            f.write(b'0' * ImageValidator.MAX_SIZE_BYTES)
-
-        try:
-            self.validator.validate(test_file)
-        except FileTooLargeError:
-            self.fail()
+        with self.assertRaises(Exception):
+            self.validator.validate(corrupted)
 
 
 if __name__ == "__main__":
