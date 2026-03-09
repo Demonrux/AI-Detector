@@ -51,7 +51,7 @@ class EXIFExtractor(BaseExtractor):
         ]
 
     @staticmethod
-    def _get_exif_dict(image: Image.Image) -> dict:
+    def get_exif_dict(image: Image.Image) -> dict:
         """Internal method to get EXIF as dict."""
         exif = image.getexif()
         return {
@@ -74,7 +74,7 @@ class EXIFExtractor(BaseExtractor):
         if image is None:
             raise ValueError("EXIFExtractor requires 'image' keyword argument")
 
-        named = self._get_exif_dict(image)
+        named = self.get_exif_dict(image)
         features = []
 
         features.append(1 if named else 0)
