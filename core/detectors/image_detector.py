@@ -12,13 +12,18 @@ import logging
 
 
 class ImageDetector(BaseDetector):
+    """
+    Class for working with image detection
+    """
 
     _DEFAULT_DATASET_PATH = Path("C:\\Users\\DMITRY\\Desktop\\Img_datasets\\imagenet_midjourney")
 
     def __init__(self, model_path: Optional[Union[str, Path]] = None):
         """
-        :param model_path: path to the model file .rxl
+        Args:
+            model_path: Path to the model file .rxl
         """
+
         self.loader = ImageLoader()
         self.extractor = self._create_default_extractor()
         super().__init__(model_path)
@@ -38,7 +43,7 @@ class ImageDetector(BaseDetector):
 
         return CompositeExtractor([EXIFExtractor(), CLIPExtractor()])
 
-    def load_model(self, model_path: Union[str, Path], force: bool = False):
+    def load_model(self, model_path: Union[str, Path], force: bool = False) -> RandomForestClassifier:
         """
         Loads a RandomForest model from file.
 
@@ -47,12 +52,12 @@ class ImageDetector(BaseDetector):
             force: If True, reload even if same model is already loaded
 
         Returns:
-            Loaded model
+            Loaded RandomForestClassifier model
         """
         model_path = Path(model_path)
 
-        if (self._model is not None) and (self.model_path == model_path) and not force:
-            logging.warning(f"Model {self.model_path} already loaded, skipping")
+        if (self._model is not None) and (self._model_path == model_path) and not force:
+            logging.warning(f"Model {self._model_path} already loaded, skipping")
             return self._model
 
         if not model_path.exists():
@@ -61,9 +66,10 @@ class ImageDetector(BaseDetector):
 
         try:
             self._model = joblib.load(model_path)
-            self.model_path = model_path
-            logging.info(f"Model loaded: {self.model_path}")
+            self._model_path = model_path
+            logging.info(f"Model loaded: {self._model_path}")
             return self._model
+
         except Exception as error:
             logging.error(f"Model loading error: {error}")
             self._model = None
@@ -119,7 +125,6 @@ class ImageDetector(BaseDetector):
     def train(self,
               dataset_path: Optional[Union[str, Path]] = None,
               save_path: Optional[Union[str, Path]] = None,
-              auto_save: bool = True,
               n_estimators: int = 200,
               max_depth: int = 20,
               random_state: int = 42,
@@ -130,7 +135,6 @@ class ImageDetector(BaseDetector):
 
         Args:
             dataset_path: path to the folder with train/val
-            auto_save: if True, automatically save the model after training
             save_path: custom path for saving (if None, generates timestamped name)
             n_estimators: number of trees in the forest
             max_depth: maximum depth of the tree
@@ -141,7 +145,8 @@ class ImageDetector(BaseDetector):
         Returns:
             Trained RandomForestClassifier
         """
-        if dataset_path is None:
+
+        if dataset_path is None or dataset_path == self._DEFAULT_DATASET_PATH:
             dataset_path = self._DEFAULT_DATASET_PATH
             logging.info(f"No dataset path provided, using default: {self._DEFAULT_DATASET_PATH}")
 
@@ -173,22 +178,18 @@ class ImageDetector(BaseDetector):
 
         print(f"Class model: {model.classes_}")
 
-        if auto_save:
-            if save_path:
-                save_file = Path(save_path)
-            else:
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                acc_str = f"{accuracy:.4f}".replace(".", "_")
-                save_file = self.model_path.parent / f"model_{timestamp}_acc{acc_str}.pkl"
+        if save_path is None:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            acc_str = f"{accuracy:.4f}".replace(".", "_")
+            save_path = self._model_path.parent / f"model_{timestamp}_acc{acc_str}.pkl"
 
-            self.save_model(save_file)
-            logging.info(f"Model automatically saved to: {save_file}")
+        self.save_model(Path(save_path))
 
         return model
 
     def predict(self, input_data: Union[str, Path], verbose=False) -> Dict[str, Any]:
         """
-       Predicts for a single image.
+        Predicts for a single image.
 
         Args:
             input_data: Path to image
@@ -197,16 +198,19 @@ class ImageDetector(BaseDetector):
         Returns:
             Dictionary with results
         """
-
         image_path = Path(input_data)
 
         try:
-            img_info = self.loader.info(image_path)
+            image = self.loader.load(image_path)
+            img_info = self.loader.info(input_data)
+
+            logging.info(f"Image Information: {img_info}")
+
         except Exception as error:
             logging.error(f"Image validation error: {error}")
             raise ValueError(f"Image validation error: {error}")
 
-        features = self.extractor.extract(image_path)
+        features = self.extractor.extract(image=image)
         features = features.reshape(1, -1)
 
         prediction = self._model.predict(features)[0]
@@ -222,7 +226,6 @@ class ImageDetector(BaseDetector):
 
         if verbose:
             print(f"Image Analysis: {image_path}")
-
             print("\n" + "=" * 50)
             print("RESULT:")
             print("=" * 50)
@@ -240,6 +243,6 @@ class ImageDetector(BaseDetector):
         """
         Saves the trained model.
         """
-        save_path = Path(path) if path else self.model_path
+        save_path = Path(path) if path else self._model_path
         joblib.dump(self._model, save_path)
-        logging.info(f"Model save: {save_path}")
+        logging.info(f"Model save to: {save_path}")

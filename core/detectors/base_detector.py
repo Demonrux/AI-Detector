@@ -6,8 +6,6 @@ import logging
 import numpy
 from tqdm import tqdm
 
-logger = logging.getLogger(__name__)
-
 
 class BaseDetector(ABC):
     """
@@ -19,20 +17,40 @@ class BaseDetector(ABC):
         """
         Args:
             model_path: Path to the model file (if None, the default path will be used)
+
+        Raises:
+            FileNotFoundError: If model file doesn't exist
+            ValueError: If model can't be loaded
         """
         self._model = None
+        self._model_path = None
 
-        if model_path is None:
-            model_path = self._get_default_model_path()
-            logger.warning(f"No model path provided, using default: {model_path}")
-        else:
+        try:
+            if model_path is None:
+                model_path = self._get_default_model_path()
+                logging.warning(f"No model path provided, using default: {model_path}")
+
+            if not Path(model_path).exists():
+                raise FileNotFoundError(f"Model file not found: {model_path}")
+
             model_path = Path(model_path)
-            logger.info(f"Model path set to: {model_path}")
+            logging.info(f"Model path set to: {model_path}")
 
-        self.model_path = model_path
-        self.load_model(self.model_path)
+            self._model_path = Path(model_path)
+            self.load_model(self._model_path)
 
-        logger.info(f"Detector initialized with model: {self.model_path}")
+            if self._model is None:
+                raise ValueError(f"Failed to load model from {self._model_path}")
+
+            logging.info(f"Detector initialized with model: {self._model_path}")
+
+        except (FileNotFoundError, ValueError) as e:
+            logging.error(f"Failed to initialize detector: {e}")
+            raise
+
+        except Exception as e:
+            logging.error(f"Unexpected error during initialization: {e}")
+            raise RuntimeError(f"Detector initialization failed: {e}") from e
 
     @abstractmethod
     def _get_default_model_path(self) -> Path:
@@ -47,7 +65,8 @@ class BaseDetector(ABC):
     def load_model(self, model_path: Union[str, Path], force: bool = False):
         """
         Loads a model from self.model_path.
-          Args:
+
+        Args:
             model_path: Path to model file
             force: If True, reload even if same model is already loaded.
         """
@@ -113,7 +132,7 @@ class BaseDetector(ABC):
             numpy.ndarray: Array of features
         """
 
-        logger.info(f"Start extraction: {desc} ({len(files)} files)")
+        logging.info(f"Start extraction: {desc} ({len(files)} files)")
         features = []
         skipped = 0
         feature_dim = None
@@ -133,7 +152,6 @@ class BaseDetector(ABC):
 
                 if feature_dim is None:
                     feature_dim = len(feat)
-                    logger.info(f"Feature dimension detected: {feature_dim}")
 
                 if len(feat) != feature_dim:
                     raise ValueError(f"Feature dimension mismatch: expected {feature_dim}, got {len(feat)}")
@@ -141,7 +159,7 @@ class BaseDetector(ABC):
                 features.append(feat)
 
             except Exception as error:
-                logger.warning(f"Skipping file {file}: {error}")
+                logging.warning(f"Skipping file {file}: {error}")
                 skipped += 1
                 if feature_dim is None:
                     continue
@@ -151,8 +169,8 @@ class BaseDetector(ABC):
             raise RuntimeError(f"No features could be extracted for {desc}")
 
         result = numpy.array(features)
-        logger.info(f"Completed: {desc}, feature shape: {result.shape}, skipped: {skipped}")
+        logging.info(f"Completed: {desc}, feature shape: {result.shape}, skipped: {skipped}")
         return result
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(model={self.model_path})"
+        return f"{self.__class__.__name__}(model={self._model_path})"
