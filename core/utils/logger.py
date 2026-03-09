@@ -16,3 +16,13 @@ def setup_logger() -> None:
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[logging.FileHandler(log_file, encoding='utf-8'), logging.StreamHandler()])
+
+
+def disable_logs():
+    logging.basicConfig(level=logging.CRITICAL, handlers=[logging.NullHandler()])
+    logging.getLogger().setLevel(logging.CRITICAL)
+    logging.getLogger().disabled = True
+
+    for logger_name in ['root', 'core', 'urllib3', 'PIL', 'matplotlib']:
+        logging.getLogger(logger_name).setLevel(logging.CRITICAL)
+        logging.getLogger(logger_name).disabled = True
