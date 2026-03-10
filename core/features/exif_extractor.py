@@ -1,7 +1,7 @@
-import numpy as np
 from datetime import datetime
 from PIL import Image, ExifTags
-from core.features.base_extractor import BaseExtractor
+from core.features import BaseExtractor
+import numpy
 
 
 class EXIFExtractor(BaseExtractor):
@@ -74,7 +74,7 @@ class EXIFExtractor(BaseExtractor):
             for tag_id, value in exif.items()
         }
 
-    def extract(self, image: Image.Image = None, **kwargs) -> np.ndarray:
+    def extract(self, image: Image.Image = None, **kwargs) -> numpy .ndarray:
         """
         Extract features from EXIF metadata.
 
@@ -125,7 +125,7 @@ class EXIFExtractor(BaseExtractor):
         features.append(self._count_category_matches(named, self.DATETIME_TAGS))
         features.append(self._count_category_matches(named, self.GPS_TAGS))
 
-        return np.array(features, dtype=np.float32)
+        return numpy .array(features, dtype=numpy.float32)
 
     @staticmethod
     def _count_category_matches(exif_dict: dict, category_tags: set) -> int:
