@@ -10,26 +10,27 @@ from core.preprocessing.loaders.image_loader import ImageLoader
 class CLIPExtractor(BaseExtractor):
     """Extract visual features using OpenAI's CLIP model."""
 
-    def __init__(self, model_name: str = "ViT-B/32", device: str = None, loader: Optional[ImageLoader] = None):
+    def __init__(self, model_name: str = "ViT-B/32", device: str = None):
         """
         Initialize CLIP extractor.
 
         Args:
             model_name: CLIP model variant (ViT-B/32, ViT-B/16, ViT-L/14, etc.)
             device: 'cuda', 'cpu', or None for auto-detection
-            loader: data loader for this type (if not passed, a new one is created)
         """
 
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
 
-        self.loader = loader or ImageLoader()
         self.device = device
         self.model, self.preprocess = clip.load(model_name, device=device)
 
         self.feature_dim = {"ViT-B/32": 512, "ViT-B/16": 512, "ViT-L/14": 768}.get(model_name, 512)
 
         self.feature_list = [f'clip_{i}' for i in range(self.feature_dim)]
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}()"
 
     def extract(self, image: Image.Image = None, **kwargs) -> np.ndarray:
         """

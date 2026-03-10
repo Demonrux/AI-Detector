@@ -21,9 +21,14 @@ class CompositeExtractor(BaseExtractor):
         Args:
             extractors: List of feature extractors to combine
         """
+
         self.extractors = extractors
         self._feature_names = self._combine_feature_names()
         self._feature_dims = self._combine_feature_dims()
+
+    def __repr__(self) -> str:
+        extractor_names = [extractor.__repr__() for extractor in self.extractors]
+        return f"CompositeExtractor({', '.join(extractor_names)})"
 
     def _combine_feature_names(self) -> list:
         all_names = []
@@ -37,7 +42,10 @@ class CompositeExtractor(BaseExtractor):
         return all_names
 
     def _combine_feature_dims(self) -> int:
-        """Total feature dimension."""
+        """
+        Total feature dimension.
+        """
+
         return sum(ex.get_feature_dim() for ex in self.extractors)
 
     def extract(self, **kwargs) -> np.ndarray:
@@ -52,10 +60,12 @@ class CompositeExtractor(BaseExtractor):
         Returns:
             Combined numpy array of all features
         """
+
         all_features = []
         for extractor in self.extractors:
             features = extractor.extract(**kwargs)
             all_features.append(features)
+
         return np.concatenate(all_features)
 
     def get_feature_names(self) -> list:

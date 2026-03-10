@@ -5,7 +5,9 @@ from core.features.base_extractor import BaseExtractor
 
 
 class EXIFExtractor(BaseExtractor):
-    """Extract features from image EXIF metadata."""
+    """
+    Extract features from image EXIF metadata.
+    """
 
     CAMERA_TAGS = {
         'Make', 'Model', 'ExposureTime', 'FNumber',
@@ -50,9 +52,22 @@ class EXIFExtractor(BaseExtractor):
             'gps_fields_count'
         ]
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}()"
+
     @staticmethod
     def get_exif_dict(image: Image.Image) -> dict:
-        """Internal method to get EXIF as dict."""
+        """
+        Internal method to get EXIF as dict.
+
+        args:
+            image: PIL Image object (preloaded)
+
+        returns:
+            dictionary of metadata
+
+        """
+
         exif = image.getexif()
         return {
             ExifTags.TAGS.get(tag_id, str(tag_id)): value
@@ -68,7 +83,7 @@ class EXIFExtractor(BaseExtractor):
             **kwargs: Additional arguments (for compatibility)
 
         Returns:
-            numpy array of extracted features
+            numpy.ndarray: numpy n array of extracted features
         """
 
         if image is None:
@@ -114,11 +129,27 @@ class EXIFExtractor(BaseExtractor):
 
     @staticmethod
     def _count_category_matches(exif_dict: dict, category_tags: set) -> int:
-        """Count how many tags from a category are present in EXIF."""
+        """
+        Count how many tags from a category are present in EXIF.
+        """
+
         return sum(1 for tag in category_tags if tag in exif_dict)
 
     def get_feature_names(self) -> list:
+        """
+        Get feature names for extractor
+
+        Returns:
+            list: list feature names
+        """
         return self.feature_list
 
     def get_feature_dim(self) -> int:
+        """
+        Get the number of features in the extractor
+
+        Returns:
+            int: count features
+        """
+
         return len(self.feature_list)
