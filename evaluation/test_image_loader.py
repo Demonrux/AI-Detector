@@ -11,7 +11,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class TestLoader(unittest.TestCase):
+class TestImageLoader(unittest.TestCase):
     """Tests for the image loader."""
 
     def setUp(self):
