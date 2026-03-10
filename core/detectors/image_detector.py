@@ -4,11 +4,9 @@ from datetime import datetime
 from tqdm import tqdm
 from collections import namedtuple
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
-from core.features.base_extractor import BaseExtractor
-from core.preprocessing.loaders.base_loader import BaseLoader
-from core.preprocessing.validators.base_validator import BaseValidator
-from core.detectors.base_detector import BaseDetector
+from core.features import BaseExtractor
+from core.preprocessing import BaseLoader
+from core.detectors import BaseDetector
 import joblib
 import logging
 import numpy
@@ -113,7 +111,7 @@ class ImageDetector(BaseDetector):
         skipped = 0
         feature_dim = None
 
-        for file in tqdm(files, desc=desc):
+        for file in tqdm(files, desc=desc, delay=0.5):
             try:
                 image = self.loader.load(file)
 
@@ -269,19 +267,25 @@ class ImageDetector(BaseDetector):
 
         image_path = Path(input_data)
 
-        try:
-            image = self.loader.load(image_path)
-            img_info = self.loader.info(image)
+        with tqdm(total=1, desc="Loading image", bar_format='{desc}: {elapsed}') as pbar:
+            try:
+                image = self.loader.load(image_path)
+                img_info = self.loader.info(image)
+                pbar.update(1)
 
-        except Exception as error:
-            logging.error(f"Image validation error: {error}")
-            raise ValueError(f"Image validation error: {error}")
+            except Exception as error:
+                logging.error(f"Image validation error: {error}")
+                raise ValueError(f"Image validation error: {error}")
 
-        features = self.extractor.extract(image=image)
-        features = features.reshape(1, -1)
+        with tqdm(total=1, desc="Extracting features", bar_format='{desc}: {elapsed}') as pbar:
+            features = self.extractor.extract(image=image)
+            features = features.reshape(1, -1)
+            pbar.update(1)
 
-        prediction = self._model.predict(features)[0]
-        proba = self._model.predict_proba(features)[0]
+        with tqdm(total=1, desc="Predicting", bar_format='{desc}: {elapsed}') as pbar:
+            prediction = self._model.predict(features)[0]
+            proba = self._model.predict_proba(features)[0]
+            pbar.update(1)
 
         result = {
             'class': 'AI-generated' if prediction == 0 else 'Real photo',

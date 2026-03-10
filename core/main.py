@@ -1,21 +1,21 @@
-import argparse
-import json
-import sys
 from pathlib import Path
 from PIL import Image
 from PIL.TiffImagePlugin import IFDRational
-import numpy
 from datetime import datetime
+import numpy
+import argparse
+import json
+import sys
 
 project_root = str(Path(__file__).parent.parent)
 
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from core.detectors.image_detector import ImageDetector
-from core.features.exif_extractor import EXIFExtractor
-from core.features.composite import CompositeExtractor
-from  core.features.clip_extractor import CLIPExtractor
+from core.detectors import ImageDetector
+from core.features import EXIFExtractor
+from core.features import CompositeExtractor
+from core.features import CLIPExtractor
 from utils.logger import setup_logger, disable_logs
 
 
@@ -130,12 +130,16 @@ def main():
 
 if __name__ == "__main__":
     setup_logger()
-    import sys
-    import io
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-    main()
 
-    # detector = ImageDetector()
+    # import sys
+    # import io
+    # sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    # main()
+
+    detector = ImageDetector()
+    print(detector.loader.validator)
+    print(detector.loader.validator.validate(r"C:\Users\DMITRY\Downloads\robot-handshake-human-background-futuristic-digital-age.jpg"))
+
     # detector.load_model(r"C:\Users\DMITRY\PycharmProjects\AI_detector_core\core\models\midjourney.pkl")
-    # print(detector.predict(r"C:\Users\DMITRY\PycharmProjects\AI_detector_core\evaluation\img\ai\midjourney_001.png"))
+    # detector.predict(r"C:\Users\DMITRY\PycharmProjects\AI_detector_core\evaluation\img\nature\ILSVRC2012_val_00000035.JPEG")
 

@@ -2,9 +2,7 @@ import torch
 import clip
 from PIL import Image
 import numpy as np
-from typing import Optional
-from .base_extractor import BaseExtractor
-from core.preprocessing.loaders.image_loader import ImageLoader
+from core.features import BaseExtractor
 
 
 class CLIPExtractor(BaseExtractor):

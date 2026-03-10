@@ -1,9 +1,8 @@
-# core/loaders/base.py
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Union, Any, Optional
+from core.preprocessing import BaseValidator
 import logging
-from core.preprocessing.validators.base_validator import BaseValidator
 
 logger = logging.getLogger(__name__)
 

@@ -1,8 +1,8 @@
 from pathlib import Path
 from typing import Union, Set
 from PIL import Image
-from core.exceptions.errors import CorruptedImageError
-from core.preprocessing.validators.base_validator import BaseValidator
+from core.exceptions import CorruptedImageError
+from core.preprocessing import BaseValidator
 import logging
 
 logger = logging.getLogger(__name__)

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-import numpy as np
+import numpy
 
 
 class BaseExtractor(ABC):
@@ -11,7 +11,7 @@ class BaseExtractor(ABC):
     """
 
     @abstractmethod
-    def extract(self, **kwargs) -> np.ndarray:
+    def extract(self, **kwargs) -> numpy .ndarray:
         """
         Extract features from preloaded data.
 
@@ -31,7 +31,7 @@ class BaseExtractor(ABC):
         """
         pass
 
-    def __call__(self, **kwargs) -> np.ndarray:
+    def __call__(self, **kwargs) -> numpy .ndarray:
         """
         Make extractor callable for convenience.
         """

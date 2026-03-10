@@ -1,9 +1,9 @@
 from PIL import Image
 from pathlib import Path
 from typing import Union, Optional
+from core.preprocessing import ImageValidator
+from core.preprocessing import BaseLoader
 import logging
-from core.preprocessing.validators.image_validator import ImageValidator
-from core.preprocessing.loaders.base_loader import BaseLoader
 
 logger = logging.getLogger(__name__)
 

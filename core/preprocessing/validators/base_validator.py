@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Union, Set
-from core.exceptions.errors import UnsupportedFormatError, FileTooLargeError
+from core.exceptions import UnsupportedFormatError, FileTooLargeError
 
 
 class BaseValidator(ABC):

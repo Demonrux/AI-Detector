@@ -1,7 +1,6 @@
 import numpy as np
-from PIL import Image
-from typing import List, Any
-from core.features.base_extractor import BaseExtractor
+from typing import List
+from core.features import BaseExtractor
 
 
 class CompositeExtractor(BaseExtractor):

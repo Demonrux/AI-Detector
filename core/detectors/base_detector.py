@@ -1,11 +1,9 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Union, Dict, Any, Optional, List
+from typing import Union, Dict, Any, Optional
 import logging
-import numpy
-from core.features.base_extractor import BaseExtractor
-from core.preprocessing.loaders.base_loader import BaseLoader
-from core.preprocessing.validators.base_validator import BaseValidator
+from core.features import BaseExtractor
+from core.preprocessing import BaseLoader
 
 
 class BaseDetector(ABC):
