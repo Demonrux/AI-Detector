@@ -1,14 +1,19 @@
-from core.detectors.base_detector import BaseDetector
 from typing import Union, Dict, Any, Optional
 from pathlib import Path
 from datetime import datetime
-import numpy
-from core.preprocessing.loaders.image_loader import ImageLoader
+from tqdm import tqdm
+from collections import namedtuple
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
-from core.features.composite import CompositeExtractor
+from core.features.base_extractor import BaseExtractor
+from core.preprocessing.loaders.base_loader import BaseLoader
+from core.preprocessing.validators.base_validator import BaseValidator
+from core.detectors.base_detector import BaseDetector
 import joblib
 import logging
+import numpy
+
+Dataset = namedtuple('Dataset', ['X_train', 'y_train', 'X_val', 'y_val'])
 
 
 class ImageDetector(BaseDetector):
@@ -18,24 +23,21 @@ class ImageDetector(BaseDetector):
 
     _DEFAULT_DATASET_PATH = Path("C:\\Users\\DMITRY\\Desktop\\Img_datasets\\imagenet_midjourney")
 
-    def __init__(self, model_path: Optional[Union[str, Path]] = None):
+    def __init__(self, extractor: Optional[BaseExtractor] = None, loader: Optional[BaseLoader] = None):
         """
         Args:
-            model_path: Path to the model file .rxl
+            extractor: Feature extractor (if None, uses default)
+            loader: Data loader (if None, uses default)
         """
 
-        self.loader = ImageLoader()
-        self.extractor = self._create_default_extractor()
-        super().__init__(model_path)
+        super().__init__(extractor, loader)
+        self._model = None
+        self._model_path = None
 
-    def _get_default_model_path(self) -> Path:
-        """Path to the default model."""
-
-        return Path(__file__).parent.parent / "models" / "midjourney.pkl"
-
-    @staticmethod
-    def _create_default_extractor() -> CompositeExtractor:
-        """Creates a default extractor (EXIF + CLIP)."""
+    def _create_default_extractor(self) -> BaseExtractor:
+        """
+        Creates a composite of EXIF and CLIP by default.
+        """
 
         from core.features.composite import CompositeExtractor
         from core.features.exif_extractor import EXIFExtractor
@@ -43,39 +45,103 @@ class ImageDetector(BaseDetector):
 
         return CompositeExtractor([EXIFExtractor(), CLIPExtractor()])
 
-    def load_model(self, model_path: Union[str, Path], force: bool = False) -> RandomForestClassifier:
+    def _create_default_loader(self) -> BaseLoader:
         """
-        Loads a RandomForest model from file.
+        Creates a loader with the default validator.
+        """
+        from core.preprocessing.loaders.image_loader import ImageLoader
+        from core.preprocessing.validators.image_validator import ImageValidator
+
+        return ImageLoader(validator=ImageValidator())
+
+    def _get_default_model_path(self) -> Path:
+        """Path to the default model."""
+
+        return Path(__file__).parent.parent / "models" / "midjourney.pkl"
+
+    def load_model(self, model_path: Union[str, Path], force: bool = False) -> None:
+        """
+        Loads a model from file and stores it internally.
 
         Args:
-            model_path: Path to model file. If None, uses current self.model_path
+            model_path: Path to model file
             force: If True, reload even if same model is already loaded
 
-        Returns:
-            Loaded RandomForestClassifier model
+        Raises:
+            FileNotFoundError: if model file doesn't exist
+            ValueError: if model loading fails
         """
         model_path = Path(model_path)
 
         if (self._model is not None) and (self._model_path == model_path) and not force:
-            logging.warning(f"Model {self._model_path} already loaded, skipping")
-            return self._model
+            logging.info(f"Model {self._model_path} already loaded, skipping")
+            return
 
         if not model_path.exists():
-            logging.error(f"Model file not found: {model_path}")
-            raise FileNotFoundError(f"Model file not found: {model_path}")
+            error_msg = f"Model file not found: {model_path}"
+            logging.error(error_msg)
+            raise FileNotFoundError(error_msg)
 
         try:
+            logging.info(f"Loading model from {model_path}")
             self._model = joblib.load(model_path)
             self._model_path = model_path
-            logging.info(f"Model loaded: {self._model_path}")
-            return self._model
+            logging.info(f"Model loaded successfully: {self._model_path}")
 
         except Exception as error:
-            logging.error(f"Model loading error: {error}")
             self._model = None
-            raise
+            self._model_path = None
+            error_msg = f"Failed to load model from {model_path}: {error}"
+            logging.error(error_msg)
+            raise ValueError(error_msg) from error
 
-    def _load_dataset(self, base_dir: Path) -> tuple:
+    def _extract_features_from_files(self, files, desc, **kwargs) -> numpy.ndarray:
+        """
+        Extracts features from images
+
+        Args:
+            files: List of image file paths
+            desc: Description for the progress bar
+            **kwargs: Additional arguments
+
+        Returns:
+            np.ndarray: Array of image features
+        """
+
+        logging.info(f"Start extraction: {desc} ({len(files)} files)")
+        features = []
+        skipped = 0
+        feature_dim = None
+
+        for file in tqdm(files, desc=desc):
+            try:
+                image = self.loader.load(file)
+
+                feat = self.extractor.extract(image=image, **kwargs)
+
+                if feature_dim is None:
+                    feature_dim = len(feat)
+                    logging.info(f"Feature dimension detected: {feature_dim}")
+
+                if len(feat) != feature_dim:
+                    raise ValueError(f"Dimension mismatch: expected {feature_dim}, got {len(feat)}")
+
+                features.append(feat)
+
+            except Exception as error:
+                logging.warning(f"Skipping file {file}: {error}")
+                skipped += 1
+                if feature_dim is None:
+                    continue
+
+        if not features:
+            raise RuntimeError(f"No features could be extracted for {desc}")
+
+        result = numpy.array(features)
+        logging.info(f"Completed: {desc}, shape: {result.shape}, skipped: {skipped}")
+        return result
+
+    def _load_dataset(self, base_dir: Path) -> Dataset:
         """
         Loads a dataset of images.
 
@@ -85,6 +151,7 @@ class ImageDetector(BaseDetector):
         Returns:
             (X_train, y_train, X_val, y_val)
         """
+
         base_dir = Path(base_dir)
 
         logging.info("=" * 60)
@@ -101,10 +168,10 @@ class ImageDetector(BaseDetector):
         logging.info(f"Val AI: {len(val_ai)} files")
         logging.info(f"Val Nature: {len(val_nature)} files")
 
-        x_train_ai = self._extract_with_progress(self.extractor, train_ai, "Extract train_ai", loader=self.loader)
-        x_train_nature = self._extract_with_progress(self.extractor, train_nature, "Extract train_nature", loader=self.loader)
-        x_val_ai = self._extract_with_progress(self.extractor, val_ai, "Extract val_ai", loader=self.loader)
-        x_val_nature = self._extract_with_progress(self.extractor, val_nature, "Extract val_nature", loader=self.loader)
+        x_train_ai = self._extract_features_from_files(train_ai, "Extract train_ai")
+        x_train_nature = self._extract_features_from_files(train_nature, "Extract train_nature")
+        x_val_ai = self._extract_features_from_files(val_ai, "Extract val_ai")
+        x_val_nature = self._extract_features_from_files(val_nature, "Extract val_nature")
 
         x_train = numpy.vstack([x_train_ai, x_train_nature])
         y_train = [0] * len(train_ai) + [1] * len(train_nature)
@@ -120,7 +187,12 @@ class ImageDetector(BaseDetector):
         logging.info(f"y_train: {len(y_train)} samples ({sum(y_train)} nature, {len(y_train) - sum(y_train)} ai)")
         logging.info(f"y_val: {len(y_val)} samples ({sum(y_val)} nature, {len(y_val) - sum(y_val)} ai)")
 
-        return x_train, y_train, x_val, y_val
+        return Dataset(
+            X_train=x_train,
+            y_train=numpy.array(y_train),
+            X_val=x_val,
+            y_val=numpy.array(y_val)
+        )
 
     def train(self,
               dataset_path: Optional[Union[str, Path]] = None,
@@ -129,7 +201,7 @@ class ImageDetector(BaseDetector):
               max_depth: int = 20,
               random_state: int = 42,
               n_jobs: int = -1,
-              **kwargs) -> RandomForestClassifier:
+              **kwargs) -> None:
         """
         Trains RandomForest on the dataset.
 
@@ -150,7 +222,7 @@ class ImageDetector(BaseDetector):
             dataset_path = self._DEFAULT_DATASET_PATH
             logging.info(f"No dataset path provided, using default: {self._DEFAULT_DATASET_PATH}")
 
-        x_train, y_train, x_val, y_val = self._load_dataset(dataset_path)
+        data = self._load_dataset(dataset_path)
 
         model = RandomForestClassifier(
             n_estimators=n_estimators,
@@ -162,49 +234,44 @@ class ImageDetector(BaseDetector):
 
         logging.info("Model training...")
 
-        model.fit(x_train, y_train)
+        model.fit(data.X_train, data.y_train)
         self._model = model
 
-        y_prediction = model.predict(x_val)
-        accuracy = accuracy_score(y_val, y_prediction)
-        logging.info(f"Accuracy:{accuracy:.4f}")
+        accuracy = model.score(data.X_val, data.y_val)
 
-        print("\nReport by class:")
-        print(classification_report(y_val, y_prediction, target_names=['AI', 'Nature']))
-
-        cm = confusion_matrix(y_val, y_prediction)
-        print("Error Matrix:")
-        print(cm)
-
-        print(f"Class model: {model.classes_}")
+        logging.info(f"Accuracy: {accuracy:.4f}")
 
         if save_path is None:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             acc_str = f"{accuracy:.4f}".replace(".", "_")
-            save_path = self._model_path.parent / f"model_{timestamp}_acc{acc_str}.pkl"
+
+            if self._model_path:
+                save_dir = self._model_path.parent
+            else:
+                save_dir = Path("models")  # или self._get_default_model_path().parent
+
+            save_path = save_dir / f"model_{timestamp}_acc{acc_str}.pkl"
 
         self.save_model(Path(save_path))
 
-        return model
-
-    def predict(self, input_data: Union[str, Path], verbose=False) -> Dict[str, Any]:
+    def predict(self, input_data: Union[str, Path]) -> Dict[str, Any]:
         """
         Predicts for a single image.
 
         Args:
             input_data: Path to image
-            verbose: Verbose output
 
         Returns:
             Dictionary with results
         """
+        if self._model is None:
+            raise ValueError("Model not loaded. Call load_model() or train() first.")
+
         image_path = Path(input_data)
 
         try:
             image = self.loader.load(image_path)
-            img_info = self.loader.info(input_data)
-
-            logging.info(f"Image Information: {img_info}")
+            img_info = self.loader.info(image)
 
         except Exception as error:
             logging.error(f"Image validation error: {error}")
@@ -224,25 +291,29 @@ class ImageDetector(BaseDetector):
             'image_info': img_info
         }
 
-        if verbose:
-            print(f"Image Analysis: {image_path}")
-            print("\n" + "=" * 50)
-            print("RESULT:")
-            print("=" * 50)
-            print(f"file: {image_path.name}")
-            print(f"Size: {img_info.get('width')}x{img_info.get('height')}")
-            print(f"Format: {img_info.get('format')}")
-            print(f"AI: {proba[0] * 100:.2f}%")
-            print(f"Real: {proba[1] * 100:.2f}%")
-            print(f"Verdict: {result['class']}")
-            print("=" * 50)
-
         return result
 
     def save_model(self, path: Optional[Union[str, Path]] = None):
         """
         Saves the trained model.
+
+        Args:
+            path: Path to save the model. If None, uses current model_path.
+
+        Raises:
+            ValueError: if no model is loaded or no save path provided
         """
-        save_path = Path(path) if path else self._model_path
+
+        if self._model is None:
+            raise ValueError("No model to save. Train or load a model first.")
+
+        if path is None:
+            if self._model_path is None:
+                raise ValueError("No save path provided and no model_path set")
+            save_path = self._model_path
+        else:
+            save_path = Path(path)
+
         joblib.dump(self._model, save_path)
-        logging.info(f"Model save to: {save_path}")
+        self._model_path = save_path
+        logging.info(f"Model saved to: {save_path}")
