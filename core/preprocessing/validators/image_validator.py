@@ -13,11 +13,17 @@ class ImageValidator(BaseValidator):
     MAX_SIZE_MB = 5
     MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}()"
+
     def get_allowed_extensions(self) -> Set[str]:
         return ImageValidator.ALLOWED_EXTENSIONS
 
     def get_max_size_bytes(self) -> int:
-        """Return maximum allowed file size in bytes"""
+        """
+        Return maximum allowed file size in bytes
+        """
+
         return self.MAX_SIZE_BYTES
 
     @staticmethod
@@ -29,10 +35,11 @@ class ImageValidator(BaseValidator):
 
         try:
             with Image.open(path) as img:
-                _ = img.format
-                _ = img.size
-        except Exception as e:
-            raise CorruptedImageError(f"Image file is corrupted: {path} — {e}")
+                img.verify()
+            with Image.open(path) as img:
+                _ = img.format, img.size
+        except Exception as error:
+            raise CorruptedImageError(f"Image file is corrupted: {path} — {error}")
 
     def validate(self, file_path: Union[str, Path]) -> bool:
         """

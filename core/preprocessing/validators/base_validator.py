@@ -5,7 +5,9 @@ from core.exceptions.errors import UnsupportedFormatError, FileTooLargeError
 
 
 class BaseValidator(ABC):
-    """Abstract base class for all validators"""
+    """
+    Abstract base class for all validators
+    """
 
     @abstractmethod
     def validate(self, file_path: Union[str, Path]) -> bool:
@@ -25,14 +27,21 @@ class BaseValidator(ABC):
         """
         pass
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}()"
+
     @abstractmethod
     def get_allowed_extensions(self) -> Set[str]:
-        """Return the set of allowed extensions"""
+        """
+        Return the set of allowed extensions
+        """
         pass
 
     @abstractmethod
     def get_max_size_bytes(self) -> int:
-        """Return maximum allowed file size in bytes"""
+        """
+        Return maximum allowed file size in bytes
+        """
         pass
 
     @staticmethod
@@ -42,6 +51,10 @@ class BaseValidator(ABC):
             raise FileNotFoundError(f"File not found: {file_path}")
 
     def _check_size(self, file_path: Path) -> None:
+        """
+        Checking the acceptable file size
+        """
+
         file_size = file_path.stat().st_size
         max_bytes = self.get_max_size_bytes()
 
@@ -49,8 +62,10 @@ class BaseValidator(ABC):
             raise FileTooLargeError(f"File size exceeded: {file_size} byte. " f"Max: {max_bytes // (1024*1024)} MB")
 
     def _check_extension(self, file_path: Path) -> None:
-        """Extension check"""
+        """
+        Extension check
+        """
+
         ext = file_path.suffix.lower()
         if ext not in self.get_allowed_extensions():
-            raise UnsupportedFormatError(f"Format '{ext}' not supported."
-                                         f""f"Allowed: {','.join(self.get_allowed_extensions())}")
+            raise UnsupportedFormatError(f"Format '{ext}' not supported. Allowed: {', '.join(self.get_allowed_extensions())}")

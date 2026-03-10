@@ -13,25 +13,23 @@ class ImageLoader(BaseLoader):
         validator = validator or ImageValidator()
         super().__init__(validator)
 
-    def info(self, file_path: Union[str, Path]) -> dict:
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}()"
+
+    def info(self, image: Image.Image) -> dict:
         """
         Get information about an image
 
         Returns: dictionary with image metadata (path, format, mode, width, height)
         """
 
-        self._validate(file_path)
+        info = {
+            "format": image.format,
+            "mode": image.mode,
+            "width": image.width,
+            "height": image.height
+        }
 
-        with Image.open(file_path) as img:
-            info = {
-                "path": str(file_path),
-                "format": img.format,
-                "mode": img.mode,
-                "width": img.width,
-                "height": img.height
-            }
-
-        logger.info(f"Image Information: {info}")
         return info
 
     def load(self, file_path: Union[str, Path]) -> Image.Image:

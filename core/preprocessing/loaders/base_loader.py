@@ -18,6 +18,9 @@ class BaseLoader(ABC):
         """
         self.validator = validator
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}()"
+
     @abstractmethod
     def load(self, file_path: Union[str, Path]) -> Any:
         """
